@@ -1,0 +1,98 @@
+import streamlit as st
+import requests
+
+# -------------------------------
+# Basic User Credentials
+# -------------------------------
+USER_CREDENTIALS = {
+    "alice": "password123",
+    "bob": "letmein"
+}
+
+# -------------------------------
+# Webhook URL (from n8n)
+# -------------------------------
+N8N_WEBHOOK_URL = "https://darshna.app.n8n.cloud/webhook-test/https://darshna.app.n8n.cloud/wewebhook-test/https://darshna.app.n8n.cloud/webhook-test/"
+
+# -------------------------------
+# Session State Management
+# -------------------------------
+def login(username, password):
+    if username in USER_CREDENTIALS and USER_CREDENTIALS[username] == password:
+        st.session_state.logged_in = True
+        st.session_state.username = username
+        st.success("Login successful!")
+    else:
+        st.error("Invalid username or password")
+
+def logout():
+    st.session_state.logged_in = False
+    st.session_state.username = ""
+
+# -------------------------------
+# Login Page
+# -------------------------------
+def show_login_page():
+    st.title("🔒 Employee Portal Login")
+    username = st.text_input("Username")
+    password = st.text_input("Password", type="password")
+    if st.button("Login"):
+        login(username, password)
+
+# -------------------------------
+# Action Item Form Page
+# -------------------------------
+def show_portal():
+    st.title("📋 Submit Meeting Action Items")
+    st.write(f"Welcome, **{st.session_state.username}**!")
+
+    with st.form("action_item_form"):
+        full_name = st.text_input("Full Name")
+        email = st.text_input("Email")
+        topic_discussed = st.text_input("Topic Discussed")
+        task_allocated = st.text_input("Task Allocated")
+        meeting_date = st.date_input("Meeting Date")
+        action_item = st.text_area("Action Item")
+        assigned_to = st.text_input("Assigned To")
+        due_date = st.date_input("Due Date")
+        submit = st.form_submit_button("Submit")
+
+        if submit:
+            payload = {
+                "submitted_by_user": st.session_state.username,
+                "full_name": full_name,
+                "email": email,
+                "topic_discussed": topic_discussed,
+                "task_allocated": task_allocated,
+                "meeting_date": str(meeting_date),
+                "action_item": action_item,
+                "assigned_to": assigned_to,
+                "due_date": str(due_date)
+            }
+
+            try:
+                response = requests.post(N8N_WEBHOOK_URL, json=payload)
+                if response.status_code == 200:
+                    st.success("✅ Action item submitted successfully!")
+                else:
+                    st.error(f"❌ Failed to submit. Status code: {response.status_code}")
+            except Exception as e:
+                st.error(f"🚨 Error submitting data: {e}")
+
+    st.button("Logout", on_click=logout)
+
+# -------------------------------
+# Main App Logic
+# -------------------------------
+def main():
+    if "logged_in" not in st.session_state:
+        st.session_state.logged_in = False
+        st.session_state.username = ""
+
+    if st.session_state.logged_in:
+        show_portal()
+    else:
+        show_login_page()
+
+if __name__ == "__main__":
+    main()
